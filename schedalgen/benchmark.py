@@ -28,7 +28,7 @@ class ScheduleProblemBenchmark:
         # количество пар, которые "ведут" одни и те же преподаватели.
         #
         #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collection.Counter`).
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
         # Старайтесь использовать как можно меньше вложенных циклов!
         pass
 
@@ -39,7 +39,7 @@ class ScheduleProblemBenchmark:
         # предназначены для данного типа пары (см README.md).
         #
         #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collection.Counter`).
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
         # Старайтесь использовать как можно меньше вложенных циклов!
         pass
 
@@ -50,7 +50,7 @@ class ScheduleProblemBenchmark:
         # указано в `self.problem.groups_per_lecture`.
         #
         #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collection.Counter`).
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
         # Старайтесь использовать как можно меньше вложенных циклов!
         pass
 
@@ -61,7 +61,7 @@ class ScheduleProblemBenchmark:
         # указано в `self.problem.groups_per_practice`.
         #
         #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collection.Counter`).
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
         # Старайтесь использовать как можно меньше вложенных циклов!
         pass
 
@@ -71,7 +71,7 @@ class ScheduleProblemBenchmark:
         # количество пар, которые "ведут" одни и те же преподаватели.
         #
         #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collection.Counter`).
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
         # Старайтесь использовать как можно меньше вложенных циклов!
         pass
 
@@ -81,8 +81,21 @@ class ScheduleProblemBenchmark:
         # количество пар, в которых "проходят" и лекция, и практика.
         #
         #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collection.Counter`).
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
         # Старайтесь использовать как можно меньше вложенных циклов!
+        pass
+
+    def count_classes_per_day(self):
+        #                        --- TODO: ---
+        # На основе функции `_collect_simultaneous_classes()` проверьте, чтобы 
+        # количество пар в день не было меньше двух и не превышало пяти.
+        #
+        #                        +++ Hint: +++
+        # Используйте уже имеющиеся решения (типа `collections.Counter`).
+        # Старайтесь использовать как можно меньше вложенных циклов!
+        pass
+
+    def validate_null_values(self):
         pass
 
     def _collect_simultaneous_classes(
@@ -94,12 +107,11 @@ class ScheduleProblemBenchmark:
             group.
             :type total_schedules: str
 
-        :returns: List of lists of tuples. Each list contains classes that are 
-            being conducted at the same date and time. Each nested list 
-            represents a group. Single class is represented as tuple of three 
-            integers. First element of the tuple stands for classroom, second 
-            is for teacher and the third means class type (i.e. lecture or 
-            practice).
+        :returns: List of lists of tuples. Each list contains classes being 
+            conducted at the same date and time. Single class is represented as 
+            tuple of three integers. First element of the tuple stands for 
+            classroom, second is for teacher and the third means class type 
+            (i.e. lecture or practice).
             :rtype: SimultaneousClasses (look up the "_typing.py" file)
         """
         groups_dict = self._wrap_groups_dict(total_schedules)
