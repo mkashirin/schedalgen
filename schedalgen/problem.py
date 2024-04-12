@@ -2,7 +2,7 @@
 # pyright: reportAttributeAccessIssue = false
 
 from textwrap import wrap
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ._typing import SchedulesTable, ClassDecodings
 
@@ -12,6 +12,8 @@ class ScheduleProblem:
     def __init__(
         self,
         total_string_len: int = 24,
+        lecture_classrooms: List = [],
+        practice_classrooms: List = [],
         *,
         group_char: int = 8,
         classroom_char: int = 16,
@@ -31,6 +33,8 @@ class ScheduleProblem:
         self.type_char = type_char
         self.total_len_without_group = self.total_string_len - self.group_char
         self.total_groups = 2**self.group_char - 1
+        self.lecture_classrooms = lecture_classrooms
+        self.practice_classrooms = practice_classrooms
 
         # Constraints
         self.groups_per_lecture = groups_per_lecture
@@ -65,6 +69,10 @@ class ScheduleProblem:
 
         # State
         self.scheduels_table: SchedulesTable = None
+
+    @classmethod
+    def __validate_initializer(cls):
+        pass
 
     def wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
         schedules_sorted = self._sort_by_groups(total_schedules)
