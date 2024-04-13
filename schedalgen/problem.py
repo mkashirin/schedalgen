@@ -2,7 +2,7 @@
 # pyright: reportAttributeAccessIssue = false
 
 from textwrap import wrap
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional, Tuple
 
 from ._typing import SchedulesTable, ClassDecodings
 
@@ -12,29 +12,43 @@ class ScheduleProblem:
     def __init__(
         self,
         total_string_len: int = 24,
-        lecture_classrooms: List = [],
-        practice_classrooms: List = [],
         *,
         group_char: int = 8,
         classroom_char: int = 16,
         teacher_char: int = 23,
-        type_char: int = -1,
+        type_char: int = 23,
         groups_per_lecture: int = 4,
         groups_per_practice: int = 2,
         classes_per_day: int = 8,
         days_per_week: int = 6,
         weeks_per_group: int = 2,
+        lecture_classrooms: Optional[Tuple[int]] = None,
+        practice_classrooms: Optional[Tuple[int]] = None,
     ):
         # Settings
         self.total_string_len = total_string_len
+
         self.group_char = group_char
         self.classroom_char = classroom_char
         self.teacher_char = teacher_char
         self.type_char = type_char
         self.total_len_without_group = self.total_string_len - self.group_char
+        self.total_classrooms = (
+            2 ** (self.classroom_char - self.group_char) - 1
+        )
         self.total_groups = 2**self.group_char - 1
-        self.lecture_classrooms = lecture_classrooms
-        self.practice_classrooms = practice_classrooms
+        self.lecture_classrooms = (
+            lecture_classrooms
+            if lecture_classrooms is not None
+            else tuple(range(1, (self.total_classrooms + 1) // 2))
+        )
+        self.practice_classrooms = (
+            practice_classrooms
+            if practice_classrooms is not None
+            else tuple(
+                range((self.total_classrooms + 1) // 2, self.total_classrooms)
+            )
+        )
 
         # Constraints
         self.groups_per_lecture = groups_per_lecture
@@ -70,14 +84,37 @@ class ScheduleProblem:
         # State
         self.scheduels_table: SchedulesTable = None
 
-    @classmethod
-    def __validate_initializer(cls):
-        pass
+        self.__validate_initializer()
+
+    def __validate_initializer(self):
+        if (
+            self.group_char
+            + (self.classroom_char - self.group_char)
+            + (self.teacher_char - self.classroom_char)
+            + (self.type_char - self.teacher_char)
+            + 1
+        ) != self.total_string_len:
+            message = (
+                "chars specified are not compatable with the string length"
+            )
+            raise ValueError(message)
+        elif not (
+            self.group_char < self.classroom_char
+            and self.classroom_char < self.teacher_char
+            and self.teacher_char < self.type_char
+        ):
+            message = "char indicies specified incorrectly"
+            raise ValueError(message)
+        elif self.total_classrooms != (
+            len(self.lecture_classrooms) + len(self.practice_classrooms)
+        ) or (set(self.lecture_classrooms) & set(self.practice_classrooms)):
+            message = "classrooms specified incorrectly"
+            raise ValueError(message)
 
     def wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
-        schedules_sorted = self._sort_by_groups(total_schedules)
+        schedules_sorted = self.sort_by_groups(total_schedules)
 
-        self.schedules_table = self._wrap_dict(
+        self.schedules_table = self.wrap_dict(
             schedules_sorted,
             self.wrap_groups_every_chars,
             "group",
@@ -103,7 +140,7 @@ class ScheduleProblem:
         )
         classes_decoded: Dict = self._get_values(classes_dict)
         for class_key in classes_decoded.keys():
-            _, classes_decoded[class_key] = self._decode_string(
+            _, classes_decoded[class_key] = self.decode_string(
                 classes_decoded[class_key]
             )
 
@@ -117,7 +154,23 @@ class ScheduleProblem:
             else:
                 print("{}- {}: {}".format(" " * spaces, str(key), str(val)))
 
-    def _sort_by_groups(self, string_to_cut: str) -> str:
+    def decode_string(self, class_string: str) -> ClassDecodings:
+        classroom = int(class_string[: self.group_char], 2)
+        teacher = int(
+            class_string[self.group_char : self.classroom_char - 1], 2
+        )
+        class_type = int(class_string[self.type_char :], 2)
+        class_tuple = (classroom, teacher, class_type)
+
+        class_dict = dict()
+        class_dict["classroom"] = classroom
+        class_dict["teacher"] = teacher
+        class_dict["type"] = class_type
+
+        class_decodings: ClassDecodings = (class_tuple, class_dict)
+        return class_decodings
+
+    def sort_by_groups(self, string_to_cut: str) -> str:
         strings_wrapped = list(wrap(string_to_cut, self.total_string_len))
         sorting_key = lambda string: string[: self.group_char]
         strings_sorted = sorted(strings_wrapped, key=sorting_key)
@@ -127,7 +180,7 @@ class ScheduleProblem:
         return strings_concat
 
     @staticmethod
-    def _wrap_dict(
+    def wrap_dict(
         to_wrap: str,
         wrap_every_chars: int,
         key_name: str,
@@ -148,7 +201,7 @@ class ScheduleProblem:
         items_number: int,
     ) -> Dict[str, Any]:
         for dict_key in dict_to_wrap.keys():
-            dict_to_wrap[dict_key] = self._wrap_dict(
+            dict_to_wrap[dict_key] = self.wrap_dict(
                 dict_to_wrap[dict_key],
                 wrap_every_chars,
                 key_name,
@@ -160,21 +213,3 @@ class ScheduleProblem:
     def _get_values(get_from: Dict) -> Dict:
         values = tuple(get_from.values())[0]
         return values
-
-    def _decode_string(
-        self, class_string: str
-    ) -> ClassDecodings:
-        classroom = int(class_string[: self.group_char], 2)
-        teacher = int(
-            class_string[self.group_char : self.classroom_char - 1], 2
-        )
-        class_type = int(class_string[self.type_char], 2)
-        class_tuple = (classroom, teacher, class_type)
-
-        class_dict = dict()
-        class_dict["classroom"] = classroom
-        class_dict["teacher"] = teacher
-        class_dict["type"] = class_type
-
-        class_decodings: ClassDecodings = (class_tuple, class_dict)
-        return class_decodings

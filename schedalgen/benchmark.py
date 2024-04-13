@@ -19,50 +19,69 @@ class ScheduleProblemBenchmark:
 
         self.problem = problem
 
+        # Hard constraints
         self.zero_class_members_violations = 0
-        self.group_limit_violations = 0
         self.classroom_type_violations = 0
         self.classroom_number_contradiction_violations = 0
         self.multiple_teachers_contradiction_violations = 0
         self.classroom_type_contradiction_violations = 0
         self.teacher_contradiction_violations = 0
 
-    def get_cost(self, simultaneous_classes: SimultaneousClasses):
+        # Soft constraints
+        self.group_limit_violations = 0
+
+    def get_cost(self, simultaneous_classes: SimultaneousClasses) -> int:
         valid_classes = dict()
         for groups_list in simultaneous_classes:
             for class_tuple in groups_list:
                 if self._has_invalid_zeros(class_tuple):
                     continue
+                
+                classroom, class_type = class_tuple[0], class_tuple[2]
+                if self._validate_classroom_type(
+                    classroom,
+                    class_type,
+                ):
+                    continue
+                elif len(valid_classes.items()) < 1:
+                    valid_classes[class_tuple] = 1
+                    continue
                 elif valid_classes.get(class_tuple, False):
-                    self._check_if_got(
+                    self._add_if_got(
                         valid_classes,
                         class_tuple,
                     )
-                else:
-                    classroom, class_type = class_tuple[0], class_tuple[2]
-                    if self._validate_classroom_type(
-                        classroom,
-                        class_type,
-                    ):
-                        continue
-                    self._validate_class(valid_classes, class_tuple)
+                    continue
 
-    def _check_if_got(
+                self._add_valid_class(valid_classes, class_tuple)
+
+        hard_constraint_violations_cost = self.hard_constraint_penalty * (
+            self.zero_class_members_violations
+            + self.classroom_type_violations
+            + self.classroom_number_contradiction_violations
+            + self.multiple_teachers_contradiction_violations
+            + self.classroom_type_contradiction_violations
+            + self.teacher_contradiction_violations
+        )
+        soft_constraint_violations_cost = (
+            self.group_limit_violations * self.soft_constraint_penalty
+        )
+        overall_cost = (
+            hard_constraint_violations_cost + soft_constraint_violations_cost
+        )
+        return overall_cost
+
+    def _add_if_got(
         self,
         valid_classes: ValidClasses,
         class_tuple: ClassTuple,
     ) -> None:
         if (
-            (
-                not class_tuple[2] != 1
-                and valid_classes[class_tuple]
-                <= self.problem.groups_per_practice
-            )
-            or (
-                not class_tuple[2] != 0
-                and valid_classes[class_tuple]
-                <= self.problem.groups_per_lecture
-            )
+            not class_tuple[2] != 1
+            and valid_classes[class_tuple] <= self.problem.groups_per_practice
+        ) or (
+            not class_tuple[2] != 0
+            and valid_classes[class_tuple] <= self.problem.groups_per_lecture
         ):
             valid_classes[class_tuple] += 1
         else:
@@ -80,7 +99,7 @@ class ScheduleProblemBenchmark:
         else:
             return True
 
-    def _validate_class(
+    def _add_valid_class(
         self, valid_classes: ValidClasses, class_tuple: ClassTuple
     ) -> None:
         for class_key in valid_classes.keys():
@@ -89,7 +108,7 @@ class ScheduleProblemBenchmark:
                 and not class_key[1] != class_tuple[1]
                 and not class_key[2] != class_tuple[2]
             ):
-                self.classroom_type_violations += 1
+                self.classroom_number_contradiction_violations += 1
             elif (
                 not class_key[0] != class_tuple[0]
                 and class_key[1] != class_tuple[1]
@@ -115,7 +134,7 @@ class ScheduleProblemBenchmark:
         if 0 in class_tuple[:-1]:
             self.zero_class_members_violations += 1
             return True
-        else: 
+        else:
             return False
 
     def count_classes_per_day(self):
@@ -151,7 +170,7 @@ class ScheduleProblemBenchmark:
             for class_string, classes_list in zip(
                 groups_dict[group_key], classes_per_group_range
             ):
-                class_string_decoded, _ = self.problem._decode_string(
+                class_string_decoded, _ = self.problem.decode_string(
                     class_string
                 )
                 simultaneous_classes[classes_list].append(class_string_decoded)
@@ -160,8 +179,8 @@ class ScheduleProblemBenchmark:
     def _wrap_groups_dict(
         self, total_schedules: str
     ) -> Dict[str, Tuple[str, ...]]:
-        schedules_sorted = self.problem._sort_by_groups(total_schedules)
-        groups_dict_wrapped = self.problem._wrap_dict(
+        schedules_sorted = self.problem.sort_by_groups(total_schedules)
+        groups_dict_wrapped = self.problem.wrap_dict(
             schedules_sorted,
             self.problem.wrap_groups_every_chars,
             "group",
