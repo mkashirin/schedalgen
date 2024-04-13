@@ -87,29 +87,32 @@ class ScheduleProblem:
         self.__validate_initializer()
 
     def __validate_initializer(self):
-        if (
-            self.group_char
-            + (self.classroom_char - self.group_char)
-            + (self.teacher_char - self.classroom_char)
-            + (self.type_char - self.teacher_char)
-            + 1
-        ) != self.total_string_len:
-            message = (
-                "chars specified are not compatable with the string length"
+        exceptions = {
+            "chars specified are not compatable with the string length": (
+                self.group_char
+                + (self.classroom_char - self.group_char)
+                + (self.teacher_char - self.classroom_char)
+                + (self.type_char - self.teacher_char)
+                + 1
             )
-            raise ValueError(message)
-        elif not (
-            self.group_char < self.classroom_char
-            and self.classroom_char < self.teacher_char
-            and self.teacher_char < self.type_char
-        ):
-            message = "char indicies specified incorrectly"
-            raise ValueError(message)
-        elif self.total_classrooms != (
-            len(self.lecture_classrooms) + len(self.practice_classrooms)
-        ) or (set(self.lecture_classrooms) & set(self.practice_classrooms)):
-            message = "classrooms specified incorrectly"
-            raise ValueError(message)
+            != self.total_string_len,
+            "char indicies specified incorrectly": not (
+                self.group_char < self.classroom_char
+                and self.classroom_char < self.teacher_char
+                and self.teacher_char < self.type_char
+            ),
+            "classrooms specified incorrectly": (
+                len(self.lecture_classrooms) + len(self.practice_classrooms)
+            )
+            or (set(self.lecture_classrooms) & set(self.practice_classrooms)),
+            "incorrect range of days per week": self.days_per_week < 0
+            or self.days_per_week > 7,
+            "incorrect range of classes per day": self.classes_per_day < 0
+            or self.classes_per_day > 8,
+        }
+        for message, value in exceptions.items():
+            if value:
+                raise ValueError(message)
 
     def wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
         schedules_sorted = self.sort_by_groups(total_schedules)
