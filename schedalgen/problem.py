@@ -1,10 +1,12 @@
 # pyright: reportIndexIssue = false
 # pyright: reportAttributeAccessIssue = false
 
+from random import getrandbits
 from textwrap import wrap
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ._typing import SchedulesTable, ClassDecodings
+from .utils import format_binary, wrap_dict, wrap_dict_cycle
 
 
 class ScheduleProblem:
@@ -46,7 +48,9 @@ class ScheduleProblem:
             practice_classrooms
             if practice_classrooms is not None
             else tuple(
-                range((self.total_classrooms + 1) // 2, self.total_classrooms)
+                range(
+                    (self.total_classrooms + 1) // 2, self.total_classrooms + 1
+                )
             )
         )
 
@@ -57,6 +61,13 @@ class ScheduleProblem:
         self.days_per_week = days_per_week
         self.weeks_per_group = weeks_per_group
 
+        self.total_schedules_len = (
+            self.total_string_len
+            * self.classes_per_day
+            * self.days_per_week
+            * self.weeks_per_group
+            * self.total_groups
+        )
         self.classes_per_group = (
             self.classes_per_day * self.days_per_week * self.weeks_per_group
         )
@@ -67,6 +78,11 @@ class ScheduleProblem:
             * self.classes_per_day
             * self.days_per_week
             * self.weeks_per_group
+        )
+        self.wrap_without_groups_every_chars = (
+            self.wrap_groups_every_chars
+            // self.total_string_len
+            * self.total_len_without_group
         )
         self.wrap_weeks_every_chars = (
             self.wrap_groups_every_chars
@@ -97,13 +113,14 @@ class ScheduleProblem:
             )
             != self.total_string_len,
             "char indicies specified incorrectly": not (
-                self.group_char < self.classroom_char
-                and self.classroom_char < self.teacher_char
-                and self.teacher_char < self.type_char
+                self.group_char <= self.classroom_char
+                and self.classroom_char <= self.teacher_char
+                and self.teacher_char <= self.type_char
             ),
             "classrooms specified incorrectly": (
                 len(self.lecture_classrooms) + len(self.practice_classrooms)
             )
+            != self.total_classrooms
             or (set(self.lecture_classrooms) & set(self.practice_classrooms)),
             "incorrect range of days per week": self.days_per_week < 0
             or self.days_per_week > 7,
@@ -114,38 +131,62 @@ class ScheduleProblem:
             if value:
                 raise ValueError(message)
 
+    def create_random_schedule(self):
+        random_schedule = str()
+        for group_number in range(1, self.total_groups + 1):
+            for _ in range(self.classes_per_group):
+                class_string = format_binary(
+                    getrandbits(self.total_len_without_group),
+                    self.total_len_without_group,
+                )
+                group_number_string = format_binary(
+                    group_number, self.group_char
+                )
+                random_schedule += group_number_string + class_string
+        return random_schedule
+
     def wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
         schedules_sorted = self.sort_by_groups(total_schedules)
 
-        self.schedules_table = self.wrap_dict(
+        self.schedules_table = wrap_dict(
             schedules_sorted,
-            self.wrap_groups_every_chars,
+            self.wrap_without_groups_every_chars,
             "group",
             self.total_groups,
         )
-        weeks_dict = self._wrap_dict_cycle(
+        self.schedules_table = wrap_dict_cycle(
             self.schedules_table,
             self.wrap_weeks_every_chars,
             "week",
             self.weeks_per_group,
         )
-        days_dict = self._wrap_dict_cycle(
-            self._get_values(weeks_dict),
-            self.wrap_days_every_chars,
-            "day",
-            self.days_per_week,
-        )
-        classes_dict = self._wrap_dict_cycle(
-            self._get_values(days_dict),
-            self.wrap_classes_every_chars,
-            "class",
-            self.classes_per_day,
-        )
-        classes_decoded: Dict = self._get_values(classes_dict)
-        for class_key in classes_decoded.keys():
-            _, classes_decoded[class_key] = self.decode_string(
-                classes_decoded[class_key]
+        for group_number in self.schedules_table:
+            self.schedules_table[group_number] = wrap_dict_cycle(
+                self.schedules_table[group_number],
+                self.wrap_days_every_chars,
+                "day",
+                self.days_per_week,
             )
+        for group_number in self.schedules_table:
+            for week_number in self.schedules_table[group_number]:
+                self.schedules_table[group_number][week_number] = (
+                    wrap_dict_cycle(
+                        self.schedules_table[group_number][week_number],
+                        self.wrap_classes_every_chars,
+                        "class",
+                        self.classes_per_day,
+                    )
+                )
+        for group_number in self.schedules_table:
+            for week_number in self.schedules_table[group_number]:
+                for day_number in self.schedules_table[group_number][
+                    week_number
+                ]:
+                    self._wrap_dict_classes(
+                        self.schedules_table[group_number][week_number][
+                            day_number
+                        ]
+                    )
 
         return self.schedules_table
 
@@ -162,7 +203,7 @@ class ScheduleProblem:
         teacher = int(
             class_string[self.group_char : self.classroom_char - 1], 2
         )
-        class_type = int(class_string[self.type_char :], 2)
+        class_type = int(class_string[self.classroom_char - 1 :], 2)
         class_tuple = (classroom, teacher, class_type)
 
         class_dict = dict()
@@ -177,42 +218,32 @@ class ScheduleProblem:
         strings_wrapped = list(wrap(string_to_cut, self.total_string_len))
         sorting_key = lambda string: string[: self.group_char]
         strings_sorted = sorted(strings_wrapped, key=sorting_key)
+
+        self.__validate_sorted(strings_sorted)
+
         for i, _ in enumerate(strings_sorted):
             strings_sorted[i] = strings_sorted[i][self.group_char :]
         strings_concat = "".join(strings_sorted)
         return strings_concat
 
-    @staticmethod
-    def wrap_dict(
-        to_wrap: str,
-        wrap_every_chars: int,
-        key_name: str,
-        strings_number: int,
-    ) -> Dict[str, Any]:
-        strings_wrapped = tuple(wrap(to_wrap, wrap_every_chars))
-        strings_wrapped_dict = {
-            "{}-{}".format(key_name, key + 1): val
-            for key, val in zip(range(strings_number), strings_wrapped)
-        }
-        return strings_wrapped_dict
-
-    def _wrap_dict_cycle(
-        self,
-        dict_to_wrap: Dict[str, Any],
-        wrap_every_chars: int,
-        key_name: str,
-        items_number: int,
-    ) -> Dict[str, Any]:
-        for dict_key in dict_to_wrap.keys():
-            dict_to_wrap[dict_key] = self.wrap_dict(
-                dict_to_wrap[dict_key],
-                wrap_every_chars,
-                key_name,
-                items_number,
+    def _wrap_dict_classes(self, day_schedule: Dict[str, Any]) -> None:
+        """Wraps the classes in a day schedule. Reduces nesting ``for``s."""
+        for class_number in day_schedule:
+            _, day_schedule[class_number] = self.decode_string(
+                day_schedule[class_number]
             )
-        return dict_to_wrap
 
-    @staticmethod
-    def _get_values(get_from: Dict) -> Dict:
-        values = tuple(get_from.values())[0]
-        return values
+    def __validate_sorted(self, strings_sorted: List[str]):
+        """Debugging function design to validate the number of classes per
+        group after the sorting has been applied.
+        """
+        violations = 0
+        groups_keys = list(range(1, self.total_groups + 1))
+        groups_counts = dict.fromkeys(groups_keys, 0)
+        for string in strings_sorted:
+            group_key = int(string[: self.group_char], 2)
+            groups_counts[group_key] += 1
+
+        for val in groups_counts.values():
+            if val != 96:
+                violations += 1

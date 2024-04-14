@@ -1,20 +1,21 @@
+from time import perf_counter
+
 from schedalgen.problem import ScheduleProblem
 from schedalgen.benchmark import ScheduleProblemBenchmark
 
 
 def main():
-    string = "010011110000111100001110010011110000111100001111"
     schedule_problem = ScheduleProblem()
-    table = schedule_problem.wrap_schedules_table(string)
-    schedule_problem.describe_table(table)
-
     schedule_problem_benchmark = ScheduleProblemBenchmark(
         10, problem=schedule_problem
     )
-    simultaneous = schedule_problem_benchmark._collect_simultaneous_classes(
-        string
-    )
-    print(simultaneous, len(simultaneous))
+
+    total_schedules = schedule_problem.create_random_schedule()
+    
+    start_time = perf_counter()
+    print(schedule_problem_benchmark.get_cost(total_schedules))
+    end_time = perf_counter()
+    print(f"Execution took {end_time - start_time} seconds.")
 
 
 if __name__ == "__main__":

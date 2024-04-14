@@ -1,8 +1,9 @@
 from textwrap import wrap
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 from ._typing import ClassTuple, SimultaneousClasses, ValidClasses
 from .problem import ScheduleProblem
+from .utils import get_nested_list, wrap_dict
 
 
 class ScheduleProblemBenchmark:
@@ -30,15 +31,18 @@ class ScheduleProblemBenchmark:
         # Soft constraints
         self.group_limit_violations = 0
 
-    def get_cost(self, simultaneous_classes: SimultaneousClasses) -> int:
+    def get_cost(self, total_shedules: str) -> int:
+        simultaneous_classes = self._collect_simultaneous_classes(
+            total_shedules
+        )
         valid_classes = dict()
         for groups_list in simultaneous_classes:
             for class_tuple in groups_list:
                 if self._has_invalid_zeros(class_tuple):
                     continue
-                
+
                 classroom, class_type = class_tuple[0], class_tuple[2]
-                if self._validate_classroom_type(
+                if self._is_invalid_classroom_type(
                     classroom,
                     class_type,
                 ):
@@ -54,6 +58,7 @@ class ScheduleProblemBenchmark:
                     continue
 
                 self._add_valid_class(valid_classes, class_tuple)
+                
 
         hard_constraint_violations_cost = self.hard_constraint_penalty * (
             self.zero_class_members_violations
@@ -75,7 +80,7 @@ class ScheduleProblemBenchmark:
         self,
         valid_classes: ValidClasses,
         class_tuple: ClassTuple,
-    ) -> None:
+    ) -> bool:
         if (
             not class_tuple[2] != 1
             and valid_classes[class_tuple] <= self.problem.groups_per_practice
@@ -84,25 +89,27 @@ class ScheduleProblemBenchmark:
             and valid_classes[class_tuple] <= self.problem.groups_per_lecture
         ):
             valid_classes[class_tuple] += 1
+            return True
         else:
             self.group_limit_violations += 1
+            return False
 
-    def _validate_classroom_type(
+    def _is_invalid_classroom_type(
         self, classroom: int, class_type: int
     ) -> bool:
         if classroom in self.problem.lecture_classrooms and class_type != 0:
             self.classroom_type_violations += 1
-            return False
+            return True
         elif classroom in self.problem.practice_classrooms and class_type != 1:
             self.classroom_type_violations += 1
-            return False
-        else:
             return True
+        else:
+            return False
 
     def _add_valid_class(
         self, valid_classes: ValidClasses, class_tuple: ClassTuple
     ) -> None:
-        for class_key in valid_classes.keys():
+        for class_key in list(valid_classes):
             if (
                 class_key[0] != class_tuple[0]
                 and not class_key[1] != class_tuple[1]
@@ -165,7 +172,9 @@ class ScheduleProblemBenchmark:
         """
         groups_dict = self._wrap_groups_dict(total_schedules)
 
-        classes_per_group_range, simultaneous_classes = self._get_nested_list()
+        classes_per_group_range, simultaneous_classes = get_nested_list(
+            self.problem.classes_per_group
+        )
         for group_key in groups_dict:
             for class_string, classes_list in zip(
                 groups_dict[group_key], classes_per_group_range
@@ -180,9 +189,9 @@ class ScheduleProblemBenchmark:
         self, total_schedules: str
     ) -> Dict[str, Tuple[str, ...]]:
         schedules_sorted = self.problem.sort_by_groups(total_schedules)
-        groups_dict_wrapped = self.problem.wrap_dict(
+        groups_dict_wrapped = wrap_dict(
             schedules_sorted,
-            self.problem.wrap_groups_every_chars,
+            self.problem.wrap_without_groups_every_chars,
             "group",
             self.problem.total_groups,
         )
@@ -194,9 +203,3 @@ class ScheduleProblemBenchmark:
                 )
             )
         return groups_dict_wrapped
-
-    def _get_nested_list(self) -> Tuple[range, List[List]]:
-        classes_per_group_range = range(self.problem.classes_per_group)
-        simultaneous_classes = [list() for _ in classes_per_group_range]
-        classes_range_tuple = (classes_per_group_range, simultaneous_classes)
-        return classes_range_tuple
