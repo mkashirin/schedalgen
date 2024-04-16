@@ -1,3 +1,4 @@
+from random import seed
 from time import perf_counter
 
 from schedalgen.problem import ScheduleProblem
@@ -9,6 +10,7 @@ def main():
     schedule_problem_benchmark = ScheduleProblemBenchmark(
         10, problem=schedule_problem
     )
+    seed(123)
 
     total_schedules = schedule_problem.create_random_schedule()
     
