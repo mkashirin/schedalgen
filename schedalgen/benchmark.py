@@ -77,9 +77,6 @@ class ScheduleProblemBenchmark:
         overall_cost = (
             hard_constraint_violations_cost + soft_constraint_violations_cost
         )
-
-        print(valid_classes)
-
         return overall_cost
 
     def _add_if_got(
