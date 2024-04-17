@@ -23,6 +23,7 @@ class ScheduleProblem:
         groups_per_lecture: int = 4,
         groups_per_practice: int = 2,
         classes_per_day: int = 8,
+        classes_per_day_preference: Tuple[int, int] = None,
         days_per_week: int = 6,
         weeks_per_group: int = 2,
         lecture_classrooms: Optional[Tuple[int] | range] = None,
@@ -44,6 +45,7 @@ class ScheduleProblem:
         self.groups_per_lecture = groups_per_lecture
         self.groups_per_practice = groups_per_practice
         self.classes_per_day = classes_per_day
+        self.classes_per_day_preference = classes_per_day_preference
         self.days_per_week = days_per_week
         self.weeks_per_group = weeks_per_group
 
@@ -56,7 +58,8 @@ class ScheduleProblem:
         # State
         self.scheduels_table: SchedulesTable = None
 
-        self.__validate_initializer()
+        self.__validator = _ScheduleProblemValidator(self)
+        self.__validator.validate_problem_initializer()
 
     def create_random_schedule(self):
         random_schedule = str()
@@ -70,8 +73,6 @@ class ScheduleProblem:
         return random_schedule
 
     def wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
-        # schedules_sorted = self.sort_by_groups(total_schedules)
-
         self.schedules_table = wrap_dict(
             total_schedules,
             self.wrap_groups_every_chars,
@@ -195,6 +196,7 @@ class ScheduleProblem:
         setattr(self, "classes_per_group", classes_per_group)
 
     def __set_groups_splitting_attrs(self):
+        # *** #
         groups_per_course = (self.total_groups + 1) // self.courses
         groups_per_direction = (
             (self.total_groups + 1) // self.courses // self.directions
@@ -242,48 +244,59 @@ class ScheduleProblem:
         setattr(self, "lecture_classrooms", lecture_classrooms)
         setattr(self, "practice_classrooms", practice_classrooms)
 
-    def __validate_initializer(self):
+
+class _ScheduleProblemValidator:
+
+    def __init__(self, problem: ScheduleProblem):
+        self.problem = problem
+
+    def validate_problem_initializer(self):
         chars_length_cond = (
-            self.classroom_char
+            self.problem.classroom_char
             + (
-                self.teacher_char - self.classroom_char
-                if self.teacher_char - self.classroom_char != 0
-                else self.teacher_char
+                self.problem.teacher_char - self.problem.classroom_char
+                if self.problem.teacher_char - self.problem.classroom_char != 0
+                else self.problem.teacher_char
             )
-            + (self.type_char - self.teacher_char)
+            + (self.problem.type_char - self.problem.teacher_char)
             + 1
-            != self.total_string_len
+            != self.problem.total_string_len
         )
         chars_length_message = (
             "chars specified are not compatable with the string length"
         )
 
         chars_indicies_cond = not (
-            self.classroom_char <= self.teacher_char
-            and self.teacher_char <= self.type_char
+            self.problem.classroom_char <= self.problem.teacher_char
+            and self.problem.teacher_char <= self.problem.type_char
         )
         chars_indicies_message = "char indicies specified incorrectly"
 
         classrooms_cond = (
-            len(self.lecture_classrooms) + len(self.practice_classrooms)
-        ) != self.total_classrooms or (
-            set(self.lecture_classrooms) & set(self.practice_classrooms)
+            len(self.problem.lecture_classrooms)
+            + len(self.problem.practice_classrooms)
+        ) != self.problem.total_classrooms or (
+            set(self.problem.lecture_classrooms)
+            & set(self.problem.practice_classrooms)
         )
         classrooms_message = "classrooms specified incorrectly"
 
-        days_per_week_cond = self.days_per_week < 0 or self.days_per_week > 7
+        days_per_week_cond = (
+            self.problem.days_per_week < 0 or self.problem.days_per_week > 7
+        )
         days_per_week_message = "incorrect range of days per week"
 
         clases_per_day_cond = (
-            self.classes_per_day < 0 or self.classes_per_day > 8
+            self.problem.classes_per_day < 0
+            or self.problem.classes_per_day > 8
         )
         classes_per_day_message = "incorrect range of classes per day"
 
         courses_directions_cond = (
-            self.total_groups + 1
-        ) % self.courses != 0 or (
-            self.total_groups + 1
-        ) % self.courses % self.directions != 0
+            self.problem.total_groups + 1
+        ) % self.problem.courses != 0 or (
+            self.problem.total_groups + 1
+        ) % self.problem.courses % self.problem.directions != 0
         courses_directions_message = (
             "courses or directions specified are not compatable with total "
             "groups number"

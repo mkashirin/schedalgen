@@ -2,9 +2,14 @@
 # pyright: reportAttributeAccessIssue = false
 
 from textwrap import wrap
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
-from ._typing import ClassTuple, SimultaneousClasses, ValidClasses
+from ._typing import (
+    ClassTuple,
+    SchedulesTable,
+    SimultaneousClasses,
+    ValidClasses,
+)
 from .problem import ScheduleProblem
 from .utils import get_nested_list, wrap_dict
 
@@ -33,6 +38,7 @@ class ScheduleProblemBenchmark:
 
         # Soft constraints
         self.group_limit_violations = 0
+        self.classes_per_day_violations = 0
 
     def get_cost(self, total_shedules: str) -> int:
         simultaneous_classes = self._collect_simultaneous_classes(
@@ -62,6 +68,8 @@ class ScheduleProblemBenchmark:
                     continue
 
                 self._add_valid_class(valid_classes, group_number, class_tuple)
+
+        # call count_classes_per_day()
 
         hard_constraint_violations_cost = self.hard_constraint_penalty * (
             self.zero_class_members_violations
@@ -149,19 +157,54 @@ class ScheduleProblemBenchmark:
         if 0 in class_tuple[:-1]:
             self.zero_class_members_violations += 1
             return True
-        else:
-            return False
+        return False
 
-    def count_classes_per_day(self):
-        #                        --- TODO: ---
-        # На основе функции `_collect_simultaneous_classes()` проверьте, чтобы
-        # количество пар в день не было меньше двух и не превышало пяти.
-        #
-        #                        +++ Hint: +++
-        # Используйте уже имеющиеся решения (типа `collections.Counter`).
-        # Старайтесь использовать как можно меньше вложенных циклов!
+    def _count_classes_per_day_violations(self, total_schedules) -> None:
+        classes_per_day_by_group = self._collect_simultaneous_classes(
+            total_schedules
+        )
+        mapped_to_violations = (
+            map(
+                lambda class_num: 1 if class_num < 2 or class_num > 5 else 0,
+                classes_per_day_by_group[group_idx],
+            )
+            for group_idx in classes_per_day_by_group
+        )
+        for classes_per_day_violations in mapped_to_violations:
+            self.classes_per_day_violations += sum(classes_per_day_violations)
 
-        pass
+    def _collect_classes_per_day(
+        self, total_schedules: str
+    ) -> List[List[int]]:
+        _, classes_per_day_by_group = get_nested_list(
+            self.problem.total_groups
+        )
+        schedules_table = self.problem.wrap_schedules_table(total_schedules)
+        for i, group_number in enumerate(schedules_table):
+            for week_number in schedules_table[group_number]:
+                for day_number in schedules_table[group_number][week_number]:
+
+                    self._append_counter(
+                        classes_per_day_by_group,
+                        schedules_table[group_number][week_number],
+                        day_number,
+                        group_idx=i,
+                    )
+        return classes_per_day_by_group
+
+    def _append_counter(
+        self,
+        classes_per_day_by_group: List[List[int]],
+        schedules_table_week_depth: SchedulesTable,
+        day_number: str,
+        *,
+        group_idx: int,
+    ) -> None:
+        class_per_day_counter = 0
+        for class_number in schedules_table_week_depth[day_number]:
+            class_dict = schedules_table_week_depth[day_number][class_number]
+            class_per_day_counter += 1 if any(class_dict.values()) else 0
+        classes_per_day_by_group[group_idx].append(class_per_day_counter)
 
     def _collect_simultaneous_classes(
         self, total_schedules: str
@@ -197,7 +240,6 @@ class ScheduleProblemBenchmark:
     def _wrap_groups_dict(
         self, total_schedules: str
     ) -> Dict[str, Tuple[str, ...]]:
-        # schedules_sorted = self.problem.sort_by_groups(total_schedules)
         groups_dict_wrapped = wrap_dict(
             total_schedules,
             self.problem.wrap_groups_every_chars,
