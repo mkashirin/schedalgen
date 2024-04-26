@@ -19,7 +19,7 @@ def main():
 
     
     start_time = perf_counter()
-    print(schedule_problem_benchmark._collect_classes_per_day(total_schedules))
+    print(schedule_problem_benchmark.get_cost(total_schedules))
     end_time = perf_counter()
     print(f"Execution took {end_time - start_time} seconds.")
 
