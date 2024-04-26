@@ -6,7 +6,6 @@ from typing import Dict, List, Tuple
 
 from ._typing import (
     ClassTuple,
-    SchedulesTable,
     SimultaneousClasses,
     ValidClasses,
 )
@@ -30,11 +29,13 @@ class ScheduleProblemBenchmark:
 
         # Hard constraints
         self.zero_class_members_violations = 0
+        self.duplicate_groups_violations = 0
         self.classroom_type_violations = 0
         self.classroom_number_contradiction_violations = 0
         self.multiple_teachers_contradiction_violations = 0
         self.classroom_type_contradiction_violations = 0
         self.teacher_contradiction_violations = 0
+        self.course_or_direction_contradiction_violoations = 0
 
         # Soft constraints
         self.group_limit_violations = 0
@@ -47,7 +48,6 @@ class ScheduleProblemBenchmark:
         valid_classes = dict()
         for groups_list in simultaneous_classes:
             for group_number, class_tuple in enumerate(groups_list):
-                group_number += 1
                 classroom, class_type = class_tuple[0], class_tuple[2]
                 if self._has_invalid_zeros(
                     class_tuple
@@ -57,19 +57,19 @@ class ScheduleProblemBenchmark:
                 ):
                     continue
                 elif len(valid_classes.items()) < 1:
-                    valid_classes[class_tuple] = [1, [group_number]]
+                    valid_classes[class_tuple] = [1, [group_number + 1]]
                     continue
                 elif valid_classes.get(class_tuple, False):
                     self._add_if_got(
                         valid_classes,
-                        group_number,
+                        group_number + 1,
                         class_tuple,
                     )
                     continue
 
                 self._add_valid_class(valid_classes, group_number, class_tuple)
 
-        # call count_classes_per_day()
+        self._count_classes_per_day_violations(total_shedules)
 
         hard_constraint_violations_cost = self.hard_constraint_penalty * (
             self.zero_class_members_violations
@@ -78,13 +78,17 @@ class ScheduleProblemBenchmark:
             + self.multiple_teachers_contradiction_violations
             + self.classroom_type_contradiction_violations
             + self.teacher_contradiction_violations
+            + self.course_or_direction_contradiction_violoations
         )
-        soft_constraint_violations_cost = (
-            self.group_limit_violations * self.soft_constraint_penalty
+        soft_constraint_violations_cost = self.soft_constraint_penalty * (
+            self.group_limit_violations + self.classes_per_day_violations
         )
         overall_cost = (
             hard_constraint_violations_cost + soft_constraint_violations_cost
         )
+
+        print(valid_classes)
+
         return overall_cost
 
     def _add_if_got(
@@ -93,20 +97,33 @@ class ScheduleProblemBenchmark:
         group_number: int,
         class_tuple: ClassTuple,
     ) -> bool:
-        if (
-            not class_tuple[2] != 1
-            and valid_classes[class_tuple][0]
-            <= self.problem.groups_per_practice
-        ) or (
-            not class_tuple[2] != 0
-            and valid_classes[class_tuple][0]
-            <= self.problem.groups_per_lecture
+        if not (
+            (
+                not class_tuple[2] != 1
+                and valid_classes[class_tuple][0]
+                < self.problem.groups_per_practice
+            )
+            or (
+                not class_tuple[2] != 0
+                and valid_classes[class_tuple][0]
+                < self.problem.groups_per_lecture
+            )
         ):
-            valid_classes[class_tuple][0] += 1
-            valid_classes[class_tuple][1] += [group_number]
-            return True
-        self.group_limit_violations += 1
-        return False
+            self.group_limit_violations += 1
+            return False
+        # fmt: off
+        elif self._has_course_or_direction_contradiction(
+            group_number, valid_classes[class_tuple][1][0]  # pyright: ignore[reportIndexIssue]
+        ):
+            self.course_or_direction_contradiction_violoations += 1
+            return False
+        # fmt: on
+        elif group_number in valid_classes[class_tuple][1]:
+            self.duplicate_groups_violations += 1
+            return False
+        valid_classes[class_tuple][0] += 1
+        valid_classes[class_tuple][1] += [group_number]
+        return True
 
     def _is_invalid_classroom_type(
         self, classroom: int, class_type: int
@@ -159,17 +176,38 @@ class ScheduleProblemBenchmark:
             return True
         return False
 
+    def _has_course_or_direction_contradiction(
+        self,
+        class_key_group: int,
+        class_tuple_group: int,
+    ) -> bool:
+        for course, course_range in enumerate(self.problem.groups_by_course):
+            if (
+                class_key_group in course_range
+                and class_tuple_group not in course_range
+            ):
+                return True
+            for direction_range in self.problem.groups_by_direction[course]:
+                if (
+                    class_key_group in direction_range
+                    and class_tuple_group not in direction_range
+                ):
+                    return True
+        return False
+
     def _count_classes_per_day_violations(self, total_schedules) -> None:
-        classes_per_day_by_group = self._collect_simultaneous_classes(
+        classes_per_day_by_group = self._collect_classes_per_day(
             total_schedules
         )
+        # fmt: off
         mapped_to_violations = (
             map(
                 lambda class_num: 1 if class_num < 2 or class_num > 5 else 0,
-                classes_per_day_by_group[group_idx],
+                classes_per_day_by_group[group_number],  # pyright: ignore[reportCallIssue, reportArgumentType]
             )
-            for group_idx in classes_per_day_by_group
+            for group_number, _ in enumerate(classes_per_day_by_group)
         )
+        # fmt: on
         for classes_per_day_violations in mapped_to_violations:
             self.classes_per_day_violations += sum(classes_per_day_violations)
 
@@ -195,7 +233,7 @@ class ScheduleProblemBenchmark:
     def _append_counter(
         self,
         classes_per_day_by_group: List[List[int]],
-        schedules_table_week_depth: SchedulesTable,
+        schedules_table_week_depth: Dict[str, Dict[str, Dict[str, str]]],
         day_number: str,
         *,
         group_idx: int,

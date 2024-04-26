@@ -3,9 +3,8 @@
 
 from random import getrandbits
 from typing import Any, Dict, Optional, Tuple
-
 from ._typing import SchedulesTable, ClassDecodings
-from .utils import format_binary, wrap_dict, wrap_dict_cycle
+from .utils import format_binary, get_nested_list, wrap_dict, wrap_dict_cycle
 
 
 class ScheduleProblem:
@@ -23,7 +22,7 @@ class ScheduleProblem:
         groups_per_lecture: int = 4,
         groups_per_practice: int = 2,
         classes_per_day: int = 8,
-        classes_per_day_preference: Tuple[int, int] = None,
+        classes_per_day_preference: Optional[Tuple[int, int]] = None,
         days_per_week: int = 6,
         weeks_per_group: int = 2,
         lecture_classrooms: Optional[Tuple[int] | range] = None,
@@ -196,7 +195,6 @@ class ScheduleProblem:
         setattr(self, "classes_per_group", classes_per_group)
 
     def __set_groups_splitting_attrs(self):
-        # *** #
         groups_per_course = (self.total_groups + 1) // self.courses
         groups_per_direction = (
             (self.total_groups + 1) // self.courses // self.directions
@@ -205,10 +203,16 @@ class ScheduleProblem:
             range(start, start + groups_per_course)
             for start in range(0, self.total_groups, groups_per_course)
         )
-        groups_by_direction = tuple(
+        groups_by_direction_ranges = tuple(
             range(start, start + groups_per_direction)
-            for start in range(0, groups_per_course, groups_per_direction)
+            for start in range(0, self.total_groups, groups_per_direction)
         )
+        _, groups_by_direction = get_nested_list(self.courses)
+        course = 0
+        for i, group_range in enumerate(groups_by_direction_ranges):
+            course += 1 if i != 0 and not i % 8 != 0 else 0
+            groups_by_direction[course].append(group_range)
+        groups_by_direction = tuple(map(tuple, groups_by_direction))
 
         setattr(
             self,
