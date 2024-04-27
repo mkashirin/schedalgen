@@ -12,7 +12,7 @@
 проведено до 8 пар.
 
 Структура таблицы расписания выглядит следующим образом в формате JSON:
-```ts
+```js
 {
     "group-1": {
         "week-1": {
@@ -78,3 +78,24 @@
 
 Конечно, есть некоторые ограничения, которые находятся в разработке, однако уже 
 сейчас модель задачи имеет приемлемый вид.
+
+## Пример логирования
+
+```
+Solution report
+
+Best fitness value: 29187.0
+Best individual stats
+    Hard constraint violations:
+        Zero class members: 1625
+        Classroom type: 1924
+        Classroom number contradiction: 147
+        Multiple teachers contradiction: 45
+        Classroom type contradiciton: 147
+        Teacher contradiction: 168
+        Course or direction contradiction: 162
+    Soft constraint violations:
+        Group limit: 2188
+        Classes per day: 756
+Schedule output file name: schedule.json
+```

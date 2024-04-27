@@ -1,8 +1,4 @@
-# pyright: reportAttributeAccessIssue = false
-
-from random import seed
-from time import perf_counter
-
+from schedalgen.solution import ScheduleProblemSolution
 from schedalgen.problem import ScheduleProblem
 from schedalgen.benchmark import ScheduleProblemBenchmark
 
@@ -17,19 +13,24 @@ def main():
         courses=2,
         directions=4,
     )
-    print(schedule_problem.total_schedules_len)
-
-    total_schedules = schedule_problem.create_random_schedule()
     schedule_problem_benchmark = ScheduleProblemBenchmark(
-        10, problem=schedule_problem
+        5, soft_constraint_penalty=3, problem=schedule_problem,
     )
-    seed(123)
+    schedule_problem_solution = ScheduleProblemSolution(
+        10,
+        population_size=300,
+        crossover_proba=0.9,
+        mutation_proba=0.3,
+        max_generations=200,
+        hall_of_fame_size=30,
+        tournament_size=3,
+        schedule_problem=schedule_problem,
+        schedule_problem_benchmark=schedule_problem_benchmark,
+    )
 
-    start_time = perf_counter()
-    print(schedule_problem_benchmark.get_cost(total_schedules))
-    end_time = perf_counter()
-    print(f"Execution took {end_time - start_time} seconds.")
+    hall_of_fame, logbook = schedule_problem_solution.perform_algorithm() 
+    schedule_problem_solution.report_stats(hall_of_fame, logbook)
 
 
-if __name__ == "__main__":
+if not __name__ != "__main__":
     main()

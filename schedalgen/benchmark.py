@@ -27,21 +27,9 @@ class ScheduleProblemBenchmark:
 
         self.problem = problem
 
-        # Hard constraints
-        self.zero_class_members_violations = 0
-        self.duplicate_groups_violations = 0
-        self.classroom_type_violations = 0
-        self.classroom_number_contradiction_violations = 0
-        self.multiple_teachers_contradiction_violations = 0
-        self.classroom_type_contradiction_violations = 0
-        self.teacher_contradiction_violations = 0
-        self.course_or_direction_contradiction_violoations = 0
+    def calculate_cost(self, total_shedules: str) -> int:
+        self.__set_violation_attributes()
 
-        # Soft constraints
-        self.group_limit_violations = 0
-        self.classes_per_day_violations = 0
-
-    def get_cost(self, total_shedules: str) -> int:
         simultaneous_classes = self._collect_simultaneous_classes(
             total_shedules
         )
@@ -87,9 +75,33 @@ class ScheduleProblemBenchmark:
             hard_constraint_violations_cost + soft_constraint_violations_cost
         )
 
-        print(valid_classes)
-
         return overall_cost
+
+    def get_violations_report(self, spaces: int = 4) -> str:
+        double_spacing = " " * spaces * 2
+        report = (
+            " " * spaces + "Hard constraint violations:\n"
+            + double_spacing + "Zero class members: "
+            + str(self.zero_class_members_violations) + "\n" 
+            + double_spacing + "Classroom type: "
+            + str(self.classroom_type_violations) + "\n"
+            + double_spacing + "Classroom number contradiction: "
+            + str(self.classroom_number_contradiction_violations) + "\n"
+            + double_spacing + "Multiple teachers contradiction: "
+            + str(self.multiple_teachers_contradiction_violations) + "\n"
+            + double_spacing + "Classroom type contradiciton: "
+            + str(self.classroom_number_contradiction_violations) + "\n"
+            + double_spacing + "Teacher contradiction: "
+            + str(self.teacher_contradiction_violations) + "\n"
+            + double_spacing + "Course or direction contradiction: "
+            + str(self.course_or_direction_contradiction_violoations) + "\n"
+            + " " * spaces + "Soft constraint violations:\n"
+            + double_spacing + "Group limit: "
+            + str(self.group_limit_violations) + "\n"
+            + double_spacing + "Classes per day: "
+            + str(self.classes_per_day_violations) + "\n"
+        )
+        return report
 
     def _add_if_got(
         self,
@@ -217,7 +229,7 @@ class ScheduleProblemBenchmark:
         _, classes_per_day_by_group = get_nested_list(
             self.problem.total_groups
         )
-        schedules_table = self.problem.wrap_schedules_table(total_schedules)
+        schedules_table = self.problem._wrap_schedules_table(total_schedules)
         for i, group_number in enumerate(schedules_table):
             for week_number in schedules_table[group_number]:
                 for day_number in schedules_table[group_number][week_number]:
@@ -292,3 +304,18 @@ class ScheduleProblemBenchmark:
                 )
             )
         return groups_dict_wrapped
+
+    def __set_violation_attributes(self) -> None:
+        # Hard constraints
+        setattr(self, "zero_class_members_violations", 0)
+        setattr(self, "duplicate_groups_violations", 0)
+        setattr(self, "classroom_type_violations", 0)
+        setattr(self, "classroom_number_contradiction_violations", 0)
+        setattr(self, "multiple_teachers_contradiction_violations", 0)
+        setattr(self, "classroom_type_contradiction_violations", 0)
+        setattr(self, "teacher_contradiction_violations", 0)
+        setattr(self, "course_or_direction_contradiction_violoations", 0)
+        
+        # Soft constraints
+        setattr(self, "group_limit_violations", 0)
+        setattr(self, "classes_per_day_violations", 0)

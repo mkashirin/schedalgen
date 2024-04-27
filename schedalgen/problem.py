@@ -3,22 +3,35 @@
 
 from random import getrandbits
 from typing import Any, Dict, Optional, Tuple
+from json import dump
+
 from ._typing import SchedulesTable, ClassDecodings
 from .utils import format_binary, get_nested_list, wrap_dict, wrap_dict_cycle
 
 
 class ScheduleProblem:
+    """This class serves as an interface for the general project's problem
+    statement. All the inputs passed to the inilializer get validated
+    (incorrect value causes ``ValueError``) by ``_ScheduleProblemValidator``.
+    In essense, the functions of this class are:
+        - Creating random schedules;
+        - Wrapping the schedules in a table object (nested dictionary, in fact);
+        - Describing the wrapped table object (in a YAML like format);
+        - Decoding individual class strings.
+    Use it to produce random schedules or save schedules as tables and then
+    save them as files.
+    """
 
     def __init__(
         self,
-        total_string_len: int = 16,
+        total_string_len: int = 8,
         *,
-        classroom_char: int = 8,
-        teacher_char: int = 15,
-        type_char: int = 15,
-        total_groups: int = 255,
-        courses: int = 4,
-        directions: int = 8,
+        classroom_char: int = 4,
+        teacher_char: int = 7,
+        type_char: int = 7,
+        total_groups: int = 63,
+        courses: int = 2,
+        directions: int = 4,
         groups_per_lecture: int = 4,
         groups_per_practice: int = 2,
         classes_per_day: int = 8,
@@ -57,10 +70,20 @@ class ScheduleProblem:
         # State
         self.scheduels_table: SchedulesTable = None
 
+        # Validate provided input
         self.__validator = _ScheduleProblemValidator(self)
         self.__validator.validate_problem_initializer()
 
-    def create_random_schedule(self):
+    def __len__(self):
+        return self.total_schedules_len
+
+    def create_random_schedule(self) -> str:
+        """Crete a random schedule string based on the parameters specifyed
+        with the initializer.
+
+        :returns: Schedule string.
+            :rtype: str
+        """
         random_schedule = str()
         for _ in range(1, self.total_groups + 1):
             for _ in range(self.classes_per_group):
@@ -71,7 +94,49 @@ class ScheduleProblem:
                 random_schedule += class_string
         return random_schedule
 
-    def wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
+    def save_table(self, total_schedules: str, file_name: str) -> None:
+        schedules_table: SchedulesTable = self._wrap_schedules_table(
+            total_schedules
+        )
+        with open(file_name, "w") as file:
+            dump(schedules_table, file, indent=4)
+
+    def decode_string(self, class_string: str) -> ClassDecodings:
+        """Decode any class string of length ``self.total_string_len`` turning
+        it into a dictionary.
+
+        :parameter class_string: Binary string representing the class.
+            :type class_string: str
+
+        :returns: Dictionary describing a class with integers.
+            :rtype: ClassDescodings (look up the "_typing.py" file)
+        """
+        classroom = int(class_string[: self.classroom_char], 2)
+        teacher = int(
+            class_string[self.classroom_char : self.teacher_char - 1], 2
+        )
+        class_type = int(class_string[self.type_char :], 2)
+        class_tuple = classroom, teacher, class_type
+
+        class_dict = dict()
+        class_dict["classroom"] = classroom
+        class_dict["teacher"] = teacher
+        class_dict["type"] = class_type
+
+        class_decodings: ClassDecodings = class_tuple, class_dict
+        return class_decodings
+
+    def _wrap_schedules_table(self, total_schedules: str) -> SchedulesTable:
+        """Wrap the schedule string in a nested dictionary.
+
+        :parameter total_schedules: Schedule string (e.g. the one returned by
+            ``create_random_schedule()``).
+            :type total_schedules: str
+
+        :returns: Schedules table, which represents the nested dictionary with
+            all the data about every individual group schedule.
+            :rtype: SchedulesTable (look up the "_typing.py" file)
+        """
         self.schedules_table = wrap_dict(
             total_schedules,
             self.wrap_groups_every_chars,
@@ -114,29 +179,29 @@ class ScheduleProblem:
 
         return self.schedules_table
 
-    def describe_table(self, schedules_table: Dict, spaces: int = 0) -> None:
+    def _describe_table(
+        self,
+        schedules_table: Dict,
+        spaces: int = 4,
+    ) -> None:
+        """Describe the table obtained by calling the
+        ``wrap_schedules_table()`` function (by printing out in the shell).
+
+        :parameter schedules_table: Schedules table produced by
+            ``wrap_schedules_table()``.
+            :type schedules_table: dict
+        :parameter spaces: Number of spaces to use for tabulation.
+            :type spaces: int
+
+        :returns: Nothing.
+            :rtype: None
+        """
         for key, val in schedules_table.items():
             if isinstance(val, dict):
-                print("{}{}:".format(" " * spaces, str(key)))
-                self.describe_table(val, spaces + 4)
+                print("{}{}:\n".format(" " * spaces, str(key)))
+                self._describe_table(val, spaces + 4)
             else:
-                print("{}- {}: {}".format(" " * spaces, str(key), str(val)))
-
-    def decode_string(self, class_string: str) -> ClassDecodings:
-        classroom = int(class_string[: self.classroom_char], 2)
-        teacher = int(
-            class_string[self.classroom_char : self.teacher_char - 1], 2
-        )
-        class_type = int(class_string[self.type_char :], 2)
-        class_tuple = classroom, teacher, class_type
-
-        class_dict = dict()
-        class_dict["classroom"] = classroom
-        class_dict["teacher"] = teacher
-        class_dict["type"] = class_type
-
-        class_decodings: ClassDecodings = class_tuple, class_dict
-        return class_decodings
+                print("{}- {}: {}\n".format(" " * spaces, str(key), str(val)))
 
     def _wrap_dict_classes(self, day_schedule: Dict[str, Any]) -> None:
         """Wraps the classes in a day schedule. Reduces nesting ``for``s."""
@@ -181,6 +246,9 @@ class ScheduleProblem:
         )
 
     def __set_additional_attrs(self):
+        """Sets some additional attributes required for benchmarking functions.
+        Reduces boilerplate in the ``__init__()`` method.
+        """
         total_schedules_len = (
             self.total_string_len
             * self.classes_per_day
@@ -195,6 +263,10 @@ class ScheduleProblem:
         setattr(self, "classes_per_group", classes_per_group)
 
     def __set_groups_splitting_attrs(self):
+        """Sets course/direction segregation based attributes required for
+        benchmarking functions. Reduces boilerplate in the ``__init__()``
+        method.
+        """
         groups_per_course = (self.total_groups + 1) // self.courses
         groups_per_direction = (
             (self.total_groups + 1) // self.courses // self.directions
@@ -232,6 +304,9 @@ class ScheduleProblem:
         lecture_classrooms: Optional[Tuple[int] | range],
         practice_classrooms: Optional[Tuple[int] | range],
     ):
+        """Sets classroom classificating attributes required for benchmarking
+        functions. Reduces boilerplate in the ``__init__()`` method.
+        """
         lecture_classrooms = (
             lecture_classrooms
             if lecture_classrooms is not None
@@ -250,11 +325,17 @@ class ScheduleProblem:
 
 
 class _ScheduleProblemValidator:
+    """Serves an interface for the initializer input to ``ScheduleProblem``
+    validation functionality.
+    """
 
     def __init__(self, problem: ScheduleProblem):
         self.problem = problem
 
     def validate_problem_initializer(self):
+        """Just read the messages for each of the conditions if you are trying
+        to understand this shit.
+        """
         chars_length_cond = (
             self.problem.classroom_char
             + (
@@ -286,7 +367,7 @@ class _ScheduleProblemValidator:
         classrooms_message = "classrooms specified incorrectly"
 
         days_per_week_cond = (
-            self.problem.days_per_week < 0 or self.problem.days_per_week > 7
+            self.problem.days_per_week < 1 or self.problem.days_per_week > 7
         )
         days_per_week_message = "incorrect range of days per week"
 
