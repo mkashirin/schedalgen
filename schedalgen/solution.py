@@ -1,5 +1,14 @@
 # pyright: reportAttributeAccessIssue = false
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+#                                    TODO                                     #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
+# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
+# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
+# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
+# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
+
 from typing import Any, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -121,6 +130,11 @@ class ScheduleProblemSolution:
         the next generation and are not subject to the genetic operators of
         selection, crossover and mutation.
         """
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
         logbook = tools.Logbook()
         # fmt: off
         logbook.header = ("gen", "nevals")  # pyright: ignore[reportAttributeAccessIssue]
@@ -152,7 +166,9 @@ class ScheduleProblemSolution:
             # Select the next generation individuals
             offspring = toolbox.select(population, len(population) - hof_size)
             # Vary the pool of individuals
-            offspring = algorithms.varAnd(offspring, toolbox, crossover_proba, mutation_proba)
+            offspring = algorithms.varAnd(
+                offspring, toolbox, crossover_proba, mutation_proba
+            )
             # Evaluate the individuals with an invalid fitness
             invalid_individual = [
                 individual
@@ -172,7 +188,9 @@ class ScheduleProblemSolution:
             population[:] = offspring
             # Append the current generation statistics to the logbook
             record = stats.compile(population) if stats else {}
-            logbook.record(gen=generation, nevals=len(invalid_individual), **record)
+            logbook.record(
+                gen=generation, nevals=len(invalid_individual), **record
+            )
             if verbose:
                 print(logbook.stream)
 
@@ -186,6 +204,11 @@ class ScheduleProblemSolution:
         return cost
 
     def _setup(self) -> None:
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
+        # РАБОАТЬ НАДО ТУТ!!!
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", list, fitness=creator.FitnessMin)
         self.toolbox.register("zeroOrOne", random.randint, 0, 1)
@@ -206,7 +229,17 @@ class ScheduleProblemSolution:
         self.toolbox.register(
             "select", tools.selTournament, tournsize=self.tournament_size
         )
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
         self.toolbox.register("mate", tools.cxTwoPoint)
         self.toolbox.register(
             "mutate", tools.mutFlipBit, indpb=1.0 / len(self.schedule_problem)
         )
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
+        # ВОТ ТУТ ОСОБЕННО!!!
