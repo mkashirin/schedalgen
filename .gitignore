@@ -3,5 +3,5 @@
 __pycache__
 
 undodir
-schedule.json
-stats.png
+# schedule.json
+# stats.png
