@@ -153,7 +153,7 @@ class ScheduleProblem:
         :type class_string: :class:`str`
 
         :returns: Dictionary describing a class with integers.
-        :rtype: :class:`ClassDescodings` (look up the :module:`_typing.py` file)
+        :rtype: :class:`ClassDescodings` (look up the :module:`_typing.py` module)
         """
         classroom = int(class_string[: self.classroom_char], 2)
         teacher = int(

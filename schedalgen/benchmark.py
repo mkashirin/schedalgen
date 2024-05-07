@@ -75,27 +75,31 @@ class ScheduleProblemBenchmark:
         )
         for groups_list in simultaneous_classes:
             group_valid_classes = dict()
+
             for group_number, class_tuple in enumerate(groups_list):
+                classroom_number, _, classroom_type = class_tuple
+                group_number_plus_one = group_number + 1
+
                 if len(group_valid_classes.items()) < 1:
-                    group_valid_classes[class_tuple] = [1, [group_number + 1]]
+                    first_value = [1, [group_number_plus_one]]
+                    group_valid_classes[class_tuple] = first_value 
                     continue
 
                 if self._has_invalid_zeros(
                     class_tuple
                 ) or not self._is_valid_classroom_type(
-                    class_tuple[0], class_tuple[2]
+                    classroom_number, classroom_type
                 ):
                     continue
                 elif group_valid_classes.get(class_tuple, False):
                     self._add_if_got(
                         group_valid_classes,
-                        group_number + 1,
+                        group_number_plus_one,
                         class_tuple,
                     )
                     continue
-
                 self._add_valid_class(
-                    group_valid_classes, group_number, class_tuple
+                    group_valid_classes, group_number_plus_one, class_tuple
                 )
 
         self._count_classes_per_day_violations(total_shedules)
@@ -119,8 +123,7 @@ class ScheduleProblemBenchmark:
         return overall_cost
 
     def get_violations_report(self) -> str:
-        """This method returns a violations report in a form of string.
-        """
+        """This method returns a violations report in a form of string."""
         report = f""" 
     Hard constraint violations:
         Zero class members: {str(self.zero_class_members_violations)} 
@@ -143,18 +146,18 @@ class ScheduleProblemBenchmark:
         group_number: int,
         class_tuple: ClassTuple,
     ) -> bool:
-        """This method adds up to the valid class setting if the conditions 
+        """This method adds up to the valid class setting if the conditions
         below are satisfied.
 
-        :parameter valid_classes: The dictionary of classes that passed all the 
+        :parameter valid_classes: The dictionary of classes that passed all the
         validation checks (see :method:`ScheduleProblemBenchmark._add_valid_class()` method).
         :type valid_classes: :class:`ValidClasses` (see :module:`_typing.py` file)
-        :parameter group_number: Number of the group to be put in the dictionary. 
+        :parameter group_number: Number of the group to be put in the dictionary.
         :type group_number: :class:`int`
-        :parameter class_tuple: Class setting to be additionally validated. 
+        :parameter class_tuple: Class setting to be additionally validated.
         :type class_tuple: :class:`ClassTuple` (see :module:`_typing.py` file)
 
-        :returns: Whether the group has been added to the class setting or not. 
+        :returns: Whether the group has been added to the class setting or not.
         :rtype: :class:`bool`
         """
         if not (
@@ -186,19 +189,19 @@ class ScheduleProblemBenchmark:
             return False
 
         valid_classes[class_tuple][0] += 1
-        valid_classes[class_tuple][1] += [group_number]
+        valid_classes[class_tuple][1].append(group_number)
         return True
 
     def _is_valid_classroom_type(
         self, classroom: int, class_type: int
     ) -> bool:
-        """This method detects whether or not the classroom number matches its 
+        """This method detects whether or not the classroom number matches its
         type (i.e. lecture or classroom).
 
         :parameter classroom: Classroom number in the class setting.
-        :type classroom: :class:`int` 
+        :type classroom: :class:`int`
         :parameter class_type: Class type in the class setting.
-        :type class_type: :class:`int` 
+        :type class_type: :class:`int`
 
         :returns: Whether or not the classroom number matches its type.
         :rtype: :class:` bool`
@@ -220,8 +223,21 @@ class ScheduleProblemBenchmark:
         group_number: int,
         class_tuple: ClassTuple,
     ) -> None:
-        """This method adds class to the valid classes dictionary if the setting 
-        satisfies the conditions """
+        """This method adds class to the valid classes dictionary if it's setting
+        satisfies the conditions provdied below.
+
+        :parameter valid_classes: The dictionary of classes that passed all the
+        validation checks (see :method:`ScheduleProblemBenchmark._add_valid_class()` method).
+        :type valid_classes: :class:`ValidClasses`
+        :parameter group_number: Group number of the to be appended to the
+        attendance list.
+        :type group_number: :class:`int`
+        :parameter class_tuple: Class setting to be added to valid classes.
+        :type: :class:`ClassTuple` (see :module:`_typing.py` module)
+
+        :returns: None.
+        :rtype: :class:`NoneType`
+        """
         for class_key in list(valid_classes):
             if (
                 class_key[0] != class_tuple[0]
@@ -251,7 +267,16 @@ class ScheduleProblemBenchmark:
                 valid_classes[class_tuple] = [1, [group_number]]
 
     def _has_invalid_zeros(self, class_tuple: ClassTuple) -> bool:
-        if not class_tuple[:-1].count(0) != 1:
+        """This method detects if the class setting provided has invalid zeros 
+        in it (i.e. setting like :code:`(52, 0, 1)` is considered invalid)
+
+        :parameter class_tuple: Class setting to be added to valid classes.
+        :type: :class:`ClassTuple` (see :module:`_typing.py` module)
+
+        :returns: Whether or not the setting provided has invalid zeros in it.
+        :rtype: :class:`bool` 
+        """
+        if not class_tuple[:-1].count(0) != 1 and class_tuple[2] != 0:
             self.zero_class_members_violations += 1
             return True
         return False
@@ -261,6 +286,20 @@ class ScheduleProblemBenchmark:
         class_key_group: int,
         class_tuple_group: int,
     ) -> bool:
+        """This method defines whether or not two classes have course or 
+        direction contradicions based on participating groups numbers.
+
+        :parameter class_key_group: Group number that already been attatched to 
+        the class setting.
+        :type class_key_group: :class:`int`
+        :parameter class_tuple_group: Group number to be attatched to the class 
+        setting.
+        :type class_tuple_group: :class:`int`
+
+        :returns: Whether or not class key and class tuple group numbers cause 
+        any contradiction.
+        :rtype: :class:`bool`
+        """
         for course, course_range in enumerate(self.problem.groups_by_course):
             if (
                 class_key_group in course_range
@@ -283,7 +322,7 @@ class ScheduleProblemBenchmark:
         mapped_to_violations = (
             map(
                 lambda class_num: (
-                    1 if class_num in self.classes_per_day_preference else -1
+                    1 if class_num in self.classes_per_day_preference else 0
                 ),
                 classes_per_day_by_group[group_number],  # pyright: ignore[reportCallIssue, reportArgumentType]
             )

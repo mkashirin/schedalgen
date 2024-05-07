@@ -26,7 +26,7 @@ def main():
         population_size=100,
         crossover_proba=0.9,
         mutation_proba=0.3,
-        max_generations=15,
+        max_generations=30,
         hall_of_fame_size=15,
         tournament_size=3,
         schedule_problem=schedule_problem,
