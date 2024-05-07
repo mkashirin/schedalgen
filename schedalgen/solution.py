@@ -1,14 +1,7 @@
 # pyright: reportAttributeAccessIssue = false
+# pyright: reportOptionalMemberAccess = false
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-#                                    TODO                                     #
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
-# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
-# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
-# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
-# ДОДЕЛАЙТЕ АЛГОРИТМ!!!
-
+import random
 from typing import Any, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -27,7 +20,6 @@ class ScheduleProblemSolution:
 
     def __init__(
         self,
-        hard_contraint_penalty: int,
         population_size: int,
         crossover_proba: float,
         mutation_proba: float,
@@ -37,7 +29,8 @@ class ScheduleProblemSolution:
         random_seed: int = 52,
         schedule_problem: Optional[ScheduleProblem] = None,
         schedule_problem_benchmark: Optional[ScheduleProblemBenchmark] = None,
-    ):
+        hard_contraint_penalty: Optional[int] = None,
+    ) -> None:
         self.hard_contraint_penalty = hard_contraint_penalty
         self.population_size = population_size
         self.crossover_proba = crossover_proba
@@ -54,8 +47,15 @@ class ScheduleProblemSolution:
         self.schedule_problem_benchmark = (
             schedule_problem_benchmark
             if schedule_problem_benchmark is not None
-            else ScheduleProblemBenchmark(self.hard_constraint_penalty)
+            else (
+                ScheduleProblemBenchmark(self.hard_constraint_penalty)
+                if self.hard_contraint_penalty is not None
+                else None
+            )
         )
+        if self.schedule_problem_benchmark is None:
+            message = "hard constaint penalty can not be None"
+            raise ValueError(message)
 
         self.toolbox = base.Toolbox()
 
@@ -106,10 +106,16 @@ class ScheduleProblemSolution:
         axis.set_ylim(0, y_limit)
         axis.set_xlabel("Generation")
         axis.set_ylabel("Min/mean fitness value")
-        axis.plot(min_fitness_values, color="red", linestyle="--")
-        axis.plot(mean_fitness_values, color="blue")
+        axis.plot(
+            min_fitness_values,
+            label="Min fitness",
+            color="red",
+            linestyle="--",
+        )
+        axis.plot(mean_fitness_values, label="Mean fitness", color="blue")
         axis.set_title("Min and mean fitness over generations", fontsize=14)
 
+        plt.legend()
         plt.tight_layout()
         plt.savefig("stats.png")
 
@@ -130,15 +136,8 @@ class ScheduleProblemSolution:
         the next generation and are not subject to the genetic operators of
         selection, crossover and mutation.
         """
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
         logbook = tools.Logbook()
-        # fmt: off
-        logbook.header = ("gen", "nevals")  # pyright: ignore[reportAttributeAccessIssue]
-        # fmt: on
+        logbook.header = ("gen", "nevals")
 
         # Evaluate the individuals with an invalid fitness
         invalid_individual = [
@@ -150,11 +149,10 @@ class ScheduleProblemSolution:
         for individual, fitness in zip(invalid_individual, fitnesses):
             individual.fitness.values = fitness
 
-        if hall_of_fame is None:
-            raise ValueError("halloffame parameter must not be empty!")
-
         hall_of_fame.update(population)
-        hof_size = len(hall_of_fame.items) if hall_of_fame.items else 0
+        hall_of_fame_size = (
+            len(hall_of_fame.items) if hall_of_fame.items else 0
+        )
 
         record = stats.compile(population) if stats else {}
         logbook.record(gen=0, nevals=len(invalid_individual), **record)
@@ -163,8 +161,11 @@ class ScheduleProblemSolution:
 
         # Begin the generational process
         for generation in range(1, n_generations + 1):
+            print("gen", generation)
             # Select the next generation individuals
-            offspring = toolbox.select(population, len(population) - hof_size)
+            offspring = toolbox.select(
+                population, len(population) - hall_of_fame_size
+            )
             # Vary the pool of individuals
             offspring = algorithms.varAnd(
                 offspring, toolbox, crossover_proba, mutation_proba
@@ -176,7 +177,6 @@ class ScheduleProblemSolution:
                 if not individual.fitness.valid
             ]
             fitnesses = toolbox.map(toolbox.evaluate, invalid_individual)
-            print(list(fitnesses))
             for individual, fitness in zip(invalid_individual, fitnesses):
                 individual.fitness.values = fitness
 
@@ -204,11 +204,11 @@ class ScheduleProblemSolution:
         return cost
 
     def _setup(self) -> None:
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
-        # РАБОАТЬ НАДО ТУТ!!!
+        self._mutation_range_step = (
+            self.schedule_problem.total_string_len
+            * self.schedule_problem.classes_per_day
+        )
+
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", list, fitness=creator.FitnessMin)
         self.toolbox.register("zeroOrOne", random.randint, 0, 1)
@@ -229,17 +229,26 @@ class ScheduleProblemSolution:
         self.toolbox.register(
             "select", tools.selTournament, tournsize=self.tournament_size
         )
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        self.toolbox.register("mate", tools.cxTwoPoint)
         self.toolbox.register(
-            "mutate", tools.mutFlipBit, indpb=1.0 / len(self.schedule_problem)
+            "mate",
+            tools.cxUniform,
+            indpb=1.0 / len(self.schedule_problem),
         )
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
-        # ВОТ ТУТ ОСОБЕННО!!!
+        self.toolbox.register(
+            "mutate",
+            self._mutateZeroBits,
+            indpb=1.0 / self.schedule_problem.total_string_len,
+        )
+
+    def _mutateZeroBits(self, individual, indpb):
+        print("mutated")
+        for i in range(0, len(individual), self._mutation_range_step):
+            random_multiplier = (
+                random.randint(0, self.schedule_problem.classes_per_day) // 2
+            )
+            plus_length = (
+                self.schedule_problem.total_string_len * random_multiplier
+            )
+            if random.random() < indpb:
+                individual[i : i + plus_length] = list("0" * plus_length)
+        return (individual,)
