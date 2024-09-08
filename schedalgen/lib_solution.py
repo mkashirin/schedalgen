@@ -138,7 +138,7 @@ class LibSolution:
         self.schedule_problem_benchmark.calculate_cost(best_individual_string)
         min_fitness_values, mean_fitness_values = logbook.select("min", "mean")
         self.schedule_problem.save_table(
-            best_individual_string, "schedule.json"
+            best_individual_string, "output/schedule.json"
         )
         report = f"""
 Solution report\n
@@ -169,7 +169,7 @@ Schedule output file name: schedule.json
 
         plt.legend()
         plt.tight_layout()
-        plt.savefig("stats.png")
+        plt.savefig("output/stats.png")
 
     def calculateCost(self, individual) -> Tuple:
         individual_string = "".join(map(str, individual))
