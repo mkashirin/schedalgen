@@ -91,7 +91,7 @@ class PureSolution:
         population_size: int,
         crossover_proba: float,
         mutation_proba: float,
-        max_gens: int,
+        n_generations: int,
         fame_hall_size: int,
         tournament_size: int,
         indep_probas: Tuple[float, float],
@@ -101,10 +101,10 @@ class PureSolution:
         self.population_size = population_size
         self.crossover_proba = crossover_proba
         self.mutation_proba = mutation_proba
-        self.max_gens = max_gens
+        self.n_generations = n_generations
         self.fame_hall_size = fame_hall_size
         self.tournament_size = tournament_size
-        self.cross_indep_proba, self.mut_indep_proba = indep_probas
+        (self.cross_indep_proba, self.mut_indep_proba) = indep_probas
 
         basicConfig(format="%(message)s", level=INFO)
         self.__setup()
@@ -122,7 +122,9 @@ Schedule output file name: schedule.json
 """
         info(report)
 
-    def perform_algorithm(self) -> None:
+    def perform_algorithm(
+        self,
+    ) -> None:
         population: Population = self.init_population(self.population_size)
         invalid_ind_values = tuple(invalid_individ_values(population))
         costs = map(self.benchmark.calculate_cost, invalid_ind_values)
@@ -134,7 +136,7 @@ Schedule output file name: schedule.json
         self.fame_hall.update(population)
         curr_fame_hall_size = len(self.fame_hall)
 
-        for gen in range(1, self.max_gens + 1):
+        for gen in range(1, self.n_generations + 1):
             start = timer()
 
             n_sels = (
