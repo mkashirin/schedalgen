@@ -1,5 +1,5 @@
 from textwrap import wrap
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from ._typing import Individual, Population
 

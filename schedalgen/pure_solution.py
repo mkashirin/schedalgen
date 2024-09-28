@@ -18,9 +18,6 @@ from .utils import (
 
 
 class FameHall:
-    """This class serves as a hall of fame for the individuals in the
-    popultation.
-    """
 
     def __init__(self, size: int) -> None:
         self.size = size
@@ -67,17 +64,14 @@ class FameHall:
         # fmt: on
         if len(self) < 1:
             best_individs = population[: self.size]
-            # print(len(best_individs))
             self.members += best_individs
             self.best = population[0]
 
         for ind in population:
             if len(self) <= self.size:
-                # print(f"inserted {ind[1]}")
                 self.insert(ind)
 
             if len(self) > self.size:
-                # print(f"removed {ind[1]}")
                 self.remove(-1)
 
 

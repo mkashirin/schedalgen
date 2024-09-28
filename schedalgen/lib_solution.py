@@ -57,12 +57,6 @@ class LibSolution:
         hall_of_fame=None,
         verbose=__debug__,
     ) -> Tuple[Any, Any]:
-        """This algorithm is similar to DEAP's ``eaSimple()`` algorithm, with the
-        modification that halloffame is used to implement an elitism mechanism.
-        The individuals contained in the ``halloffame`` are directly injected into
-        the next generation and are not subject to the genetic operators of
-        selection, crossover and mutation.
-        """
         self._setup()
         population = self.toolbox.populationCreator(n=self.population_size)
 
@@ -73,7 +67,6 @@ class LibSolution:
         logbook = tools.Logbook()
         logbook.header = ("gen", "nevals")
 
-        # Evaluate the individuals with an invalid fitness
         invalid_individual = [
             individual
             for individual in population
@@ -93,18 +86,14 @@ class LibSolution:
         if verbose:
             print(logbook.stream)
 
-        # Begin the generational process
         for generation in range(1, n_generations + 1):
             print("gen", generation)
-            # Select the next generation individuals
             offspring = self.toolbox.select(
                 population, len(population) - hall_of_fame_size
             )
-            # Vary the pool of individuals
             offspring = algorithms.varAnd(
                 offspring, self.toolbox, crossover_proba, mutation_proba
             )
-            # Evaluate the individuals with an invalid fitness
             invalid_individual = [
                 individual
                 for individual in offspring
@@ -116,13 +105,9 @@ class LibSolution:
             for individual, fitness in zip(invalid_individual, fitnesses):
                 individual.fitness.values = fitness
 
-            # Add the best back to population
             offspring.extend(hall_of_fame.items)
-            # Update the hall of fame with the generated individuals
             hall_of_fame.update(offspring)
-            # Replace the current population by the offspring
             population[:] = offspring
-            # Append the current generation statistics to the logbook
             record = stats.compile(population) if stats else {}
             logbook.record(
                 gen=generation, nevals=len(invalid_individual), **record
